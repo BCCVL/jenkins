@@ -31,13 +31,14 @@
       <command>set +e
 #Default compose args
 COMPOSE_ARGS=&quot; -f jenkins.yml -p jenkins &quot;
-
+echo $SVN_REVISION
+env
 #Make sure old containers are gone
 sudo docker-compose $COMPOSE_ARGS stop
 sudo docker-compose $COMPOSE_ARGS rm --force -v
 
 #build the system
-sudo docker-compose $COMPOSE_ARGS build 
+sudo docker-compose $COMPOSE_ARGS build --no-cache
 
 #Run unit tests
 RANDID=$(date | md5sum | head -c 6)
@@ -57,16 +58,27 @@ if [ $ERR -eq 0 ]; then
   if [ $CODE -eq 200 ]; then
     echo &quot;Test passed - Tagging&quot;
     HASH=$(git rev-parse --short HEAD)
-    branch_name=&quot;$(git symbolic-ref HEAD 2&gt;/dev/null)&quot; || branch_name=&quot;(unnamed branch)&quot;     # detached HEAD
-    branch_name=${branch_name##refs/heads/}    
+    branch_name=${GIT_BRANCH##origin/}    
     sudo docker tag -f jenkins_visualiser bccvl/visualiser:$HASH
-    sudo docker tag -f jenkins_visualiser bccvl/visualiser:newest
-    sudo docker tag -f jenkins_visualiser bccvl/visualiser:${branch_name}_latest    
+    sudo docker tag -f jenkins_visualiser bccvl/visualiser:&quot;${branch_name}-latest&quot;
+    TAG=$(git describe --tags --exact-match)
+    HAS_TAG=$?
+    if [ $HAS_TAG -eq 0 ]; then
+      sudo docker tag -f jenkins_visualiser bccvl/visualiser:$TAG
+        if [ $branch_name = &quot;master&quot; ]; then
+          sudo docker tag -f jenkins_visualiser bccvl/visualiser:latest
+        fi
+    fi
     echo &quot;Pushing&quot;
     sudo docker login -e $DOCKER_EMAIL -u $DOCKER_USERNAME -p $DOCKER_PASSWORD
     sudo docker push bccvl/visualiser:$HASH
-    sudo docker push bccvl/visualiser:newest
-  sudo docker push bccvl/visualiser:${branch_name}_latest    
+  sudo docker push bccvl/visualiser:&quot;${branch_name}-latest&quot;
+    if [ $HAS_TAG -eq 0 ]; then
+      sudo docker push bccvl/visualiser:$TAG
+        if [ $branch_name = &quot;master&quot; ]; then        
+          sudo docker push bccvl/visualiser:latest
+        fi
+    fi    
   else
     echo &quot;Site returned &quot; $CODE
     ERR=1
