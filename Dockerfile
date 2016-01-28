@@ -10,7 +10,11 @@ RUN echo "deb http://apt.dockerproject.org/repo debian-jessie main" \
       && apt-get install -y sudo \
       && apt-get install -y docker-engine \
       && rm -rf /var/lib/apt/lists/*
-RUN echo "jenkins ALL=NOPASSWD: ALL" >> /etc/sudoers
+
+RUN echo "jenkins ALL=NOPASSWD: /usr/bin/docker" >> /etc/sudoers
+RUN echo "jenkins ALL=NOPASSWD: /usr/local/bin/docker-compose" >> /etc/sudoers
+
+RUN usermod -aG docker jenkins
 
 RUN curl -L https://github.com/docker/compose/releases/download/1.5.2/\
 docker-compose-`uname -s`-`uname -m` > /usr/local/bin/docker-compose; \
@@ -21,3 +25,10 @@ COPY plugins.txt /usr/share/jenkins/ref/
 RUN /usr/local/bin/plugins.sh /usr/share/jenkins/ref/plugins.txt
 
 COPY add_user.groovy /usr/share/jenkins/ref/init.groovy.d/add_user.groovy
+
+COPY jobs /jobs
+COPY import_jobs.groovy /usr/share/jenkins/ref/init.groovy.d/import_jobs.groovy
+
+
+ENV JENKINS_USERNAME jenkins
+ENV JENKINS_PASSWORD jenkins

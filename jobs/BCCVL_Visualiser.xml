@@ -1,0 +1,82 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<project>
+  <actions/>
+  <description></description>
+  <keepDependencies>false</keepDependencies>
+  <properties/>
+  <scm class="hudson.plugins.git.GitSCM" plugin="git@2.4.1">
+    <configVersion>2</configVersion>
+    <userRemoteConfigs>
+      <hudson.plugins.git.UserRemoteConfig>
+        <url>https://github.com/jhtngu/BCCVL_Visualiser.git</url>
+      </hudson.plugins.git.UserRemoteConfig>
+    </userRemoteConfigs>
+    <branches>
+      <hudson.plugins.git.BranchSpec>
+        <name>*/develop</name>
+      </hudson.plugins.git.BranchSpec>
+    </branches>
+    <doGenerateSubmoduleConfigurations>false</doGenerateSubmoduleConfigurations>
+    <submoduleCfg class="list"/>
+    <extensions/>
+  </scm>
+  <canRoam>true</canRoam>
+  <disabled>false</disabled>
+  <blockBuildWhenDownstreamBuilding>false</blockBuildWhenDownstreamBuilding>
+  <blockBuildWhenUpstreamBuilding>false</blockBuildWhenUpstreamBuilding>
+  <triggers/>
+  <concurrentBuild>false</concurrentBuild>
+  <builders>
+    <hudson.tasks.Shell>
+      <command>#Default compose args
+COMPOSE_ARGS=&quot; -f jenkins.yml -p jenkins &quot;
+
+#Make sure old containers are gone
+sudo docker-compose $COMPOSE_ARGS stop
+sudo docker-compose $COMPOSE_ARGS rm --force -v
+
+#build the system
+sudo docker-compose $COMPOSE_ARGS build --no-cache
+
+#Run unit tests
+RANDID=$(date | md5sum | head -c 6)
+CONTAINER_ID=jenkins_visualiser_$RANDID
+sudo docker-compose $COMPOSE_ARGS run --no-deps -e ENV=UNIT --name=$CONTAINER_ID visualiser
+ERR=$?
+sudo docker cp $CONTAINER_ID:/tmp/nosetests.xml ./nosetests.xml
+sudo docker rm --force $CONTAINER_ID
+
+sudo docker-compose $COMPOSE_ARGS up -d --no-build
+CONTAINER_ID=$(sudo docker-compose $COMPOSE_ARGS ps -q)
+
+ERR=0
+#Run system test if unit tests passed
+if [ $ERR -eq0 ]; then
+  IP=$(sudo docker inspect -f {{.NetworkSettings.IPAddress}} $CONTAINER_ID)
+  CODE=$(curl -sL -w &quot;%{http_code}&quot; $IP:10600/api -o /dev/null) || true
+  if [ $CODE -eq 200 ]; then
+    echo &quot;Test passed - Tagging&quot;
+    HASH=$(git rev-parse --short HEAD)
+    sudo docker tag -f jenkins_visualiser bccvl/visualiser:$HASH
+    sudo docker tag -f jenkins_visualiser bccvl/visualiser:newest
+    echo &quot;Pushing&quot;
+    #sudo docker login -e joe@bloggs.com -u jbloggs -p jbloggs123
+    #sudo docker push bccvl/visualiser:$HASH
+    #sudo docker push bccvl/visualiser:newest
+  else
+    echo &quot;Site returned &quot; $CODE
+    ERR=1
+  fi
+fi
+
+#Pull down the system
+sudo docker-compose $COMPOSE_ARGS stop
+sudo docker-compose $COMPOSE_ARGS rm --force -v
+
+return $ERR
+</command>
+    </hudson.tasks.Shell>
+  </builders>
+  <publishers/>
+  <buildWrappers/>
+</project>
