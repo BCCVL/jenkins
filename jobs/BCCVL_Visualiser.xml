@@ -31,8 +31,6 @@
       <command>set +e
 #Default compose args
 COMPOSE_ARGS=&quot; -f jenkins.yml -p jenkins &quot;
-echo $SVN_REVISION
-env
 #Make sure old containers are gone
 sudo docker-compose $COMPOSE_ARGS stop
 sudo docker-compose $COMPOSE_ARGS rm --force -v
