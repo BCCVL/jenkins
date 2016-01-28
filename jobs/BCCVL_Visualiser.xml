@@ -28,7 +28,8 @@
   <concurrentBuild>false</concurrentBuild>
   <builders>
     <hudson.tasks.Shell>
-      <command>#Default compose args
+      <command>set +e
+#Default compose args
 COMPOSE_ARGS=&quot; -f jenkins.yml -p jenkins &quot;
 
 #Make sure old containers are gone
@@ -36,7 +37,7 @@ sudo docker-compose $COMPOSE_ARGS stop
 sudo docker-compose $COMPOSE_ARGS rm --force -v
 
 #build the system
-sudo docker-compose $COMPOSE_ARGS build --no-cache
+sudo docker-compose $COMPOSE_ARGS build 
 
 #Run unit tests
 RANDID=$(date | md5sum | head -c 6)
@@ -49,20 +50,23 @@ sudo docker rm --force $CONTAINER_ID
 sudo docker-compose $COMPOSE_ARGS up -d --no-build
 CONTAINER_ID=$(sudo docker-compose $COMPOSE_ARGS ps -q)
 
-ERR=0
 #Run system test if unit tests passed
-if [ $ERR -eq0 ]; then
+if [ $ERR -eq 0 ]; then
   IP=$(sudo docker inspect -f {{.NetworkSettings.IPAddress}} $CONTAINER_ID)
   CODE=$(curl -sL -w &quot;%{http_code}&quot; $IP:10600/api -o /dev/null) || true
   if [ $CODE -eq 200 ]; then
     echo &quot;Test passed - Tagging&quot;
     HASH=$(git rev-parse --short HEAD)
+    branch_name=&quot;$(git symbolic-ref HEAD 2&gt;/dev/null)&quot; || branch_name=&quot;(unnamed branch)&quot;     # detached HEAD
+    branch_name=${branch_name##refs/heads/}    
     sudo docker tag -f jenkins_visualiser bccvl/visualiser:$HASH
     sudo docker tag -f jenkins_visualiser bccvl/visualiser:newest
+    sudo docker tag -f jenkins_visualiser bccvl/visualiser:${branch_name}_latest    
     echo &quot;Pushing&quot;
-    #sudo docker login -e joe@bloggs.com -u jbloggs -p jbloggs123
-    #sudo docker push bccvl/visualiser:$HASH
-    #sudo docker push bccvl/visualiser:newest
+    sudo docker login -e $DOCKER_EMAIL -u $DOCKER_USERNAME -p $DOCKER_PASSWORD
+    sudo docker push bccvl/visualiser:$HASH
+    sudo docker push bccvl/visualiser:newest
+  sudo docker push bccvl/visualiser:${branch_name}_latest    
   else
     echo &quot;Site returned &quot; $CODE
     ERR=1
@@ -77,6 +81,13 @@ return $ERR
 </command>
     </hudson.tasks.Shell>
   </builders>
-  <publishers/>
+  <publishers>
+    <hudson.tasks.junit.JUnitResultArchiver plugin="junit@1.2-beta-4">
+      <testResults>nosetests.xml</testResults>
+      <keepLongStdio>false</keepLongStdio>
+      <testDataPublishers/>
+      <healthScaleFactor>1.0</healthScaleFactor>
+    </hudson.tasks.junit.JUnitResultArchiver>
+  </publishers>
   <buildWrappers/>
 </project>

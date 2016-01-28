@@ -32,3 +32,7 @@ COPY import_jobs.groovy /usr/share/jenkins/ref/init.groovy.d/import_jobs.groovy
 
 ENV JENKINS_USERNAME jenkins
 ENV JENKINS_PASSWORD jenkins
+
+ENV DOCKER_EMAIL nobody@example.com
+ENV DOCKER_USERNAME nobody
+ENV DOCKER_PASSWORD secret

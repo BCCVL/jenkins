@@ -4,6 +4,7 @@ git:2.4.1
 greenballs:1.15
 docker-workflow:1.2
 github:1.17.0
+ws-cleanup:0.28
 docker-commons:1.2
 workflow-step-api:1.7-alpha-1
 workflow-cps:1.7-alpha-1
