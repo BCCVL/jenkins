@@ -31,12 +31,22 @@
       <command>set +e
 #Default compose args
 COMPOSE_ARGS=&quot; -f jenkins.yml -p jenkins &quot;
+TAG=$(git describe --tags --exact-match)
+HAS_TAG=$?
+HASH=$(git rev-parse --short HEAD)
+BRANCH_NAME=${GIT_BRANCH##origin/}
+
 #Make sure old containers are gone
 sudo docker-compose $COMPOSE_ARGS stop
 sudo docker-compose $COMPOSE_ARGS rm --force -v
 
 #build the system
-sudo docker-compose $COMPOSE_ARGS build --no-cache
+# TODO: evaluate if builds should use --no-cache 
+if [ $HAS_TAG -eq 0 ]; then
+  BUILD_ARGS=&quot; --no-cache &quot;
+fi
+
+sudo docker-compose $COMPOSE_ARGS build $BUILD_ARGS
 
 #Run unit tests
 RANDID=$(date | md5sum | head -c 6)
@@ -55,25 +65,21 @@ if [ $ERR -eq 0 ]; then
   CODE=$(curl -sL -w &quot;%{http_code}&quot; $IP:10600/api -o /dev/null) || true
   if [ $CODE -eq 200 ]; then
     echo &quot;Test passed - Tagging&quot;
-    HASH=$(git rev-parse --short HEAD)
-    branch_name=${GIT_BRANCH##origin/}    
     sudo docker tag -f jenkins_visualiser bccvl/visualiser:$HASH
-    sudo docker tag -f jenkins_visualiser bccvl/visualiser:&quot;${branch_name}-latest&quot;
-    TAG=$(git describe --tags --exact-match)
-    HAS_TAG=$?
+    sudo docker tag -f jenkins_visualiser bccvl/visualiser:&quot;${BRANCH_NAME}-latest&quot;
     if [ $HAS_TAG -eq 0 ]; then
       sudo docker tag -f jenkins_visualiser bccvl/visualiser:$TAG
-        if [ $branch_name = &quot;master&quot; ]; then
+        if [ $BRANCH_NAME = &quot;master&quot; ]; then
           sudo docker tag -f jenkins_visualiser bccvl/visualiser:latest
         fi
     fi
     echo &quot;Pushing&quot;
     sudo docker login -e $DOCKER_EMAIL -u $DOCKER_USERNAME -p $DOCKER_PASSWORD
     sudo docker push bccvl/visualiser:$HASH
-  sudo docker push bccvl/visualiser:&quot;${branch_name}-latest&quot;
+  sudo docker push bccvl/visualiser:&quot;${BRANCH_NAME}-latest&quot;
     if [ $HAS_TAG -eq 0 ]; then
       sudo docker push bccvl/visualiser:$TAG
-        if [ $branch_name = &quot;master&quot; ]; then        
+        if [ $BRANCH_NAME = &quot;master&quot; ]; then        
           sudo docker push bccvl/visualiser:latest
         fi
     fi    
