@@ -21,6 +21,7 @@ docker-compose-`uname -s`-`uname -m` > /usr/local/bin/docker-compose; \
     chmod +x /usr/local/bin/docker-compose
 
 RUN mkdir /jobs && chown -R jenkins /jobs
+RUN rm /bin/sh && ln -sf /bin/bash /bin/sh
 
 USER jenkins
 COPY plugins.txt /usr/share/jenkins/ref/
@@ -37,7 +38,3 @@ ENV JENKINS_PASSWORD jenkins
 ENV PROJECT_REPO https://github.com/BCCVL/jenkinsprojects.git
 ENV PROJECT_BRANCH master
 
-ENV DOCKER_PUSH 0
-ENV DOCKER_EMAIL nobody@example.com
-ENV DOCKER_USERNAME nobody
-ENV DOCKER_PASSWORD secret
