@@ -17,3 +17,4 @@ workflow-support:1.7-alpha-1
 workflow-scm-step:1.7-alpha-1
 workflow-api:1.7-alpha-1
 durable-task:1.7
+kubernetes:0.5
