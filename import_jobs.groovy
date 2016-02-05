@@ -2,6 +2,15 @@
 import jenkins.model.*
 import static groovy.io.FileType.FILES
 
+def env = System.getenv()
+String repo = env['PROJECT_REPO']
+String branch = env['PROJECT_BRANCH']
+
+def proc1 = ['rm','-rf','/job/*'].execute()
+proc1.waitFor()
+def proc2 = ['/usr/bin/git', 'clone', '-b', branch, repo, '/jobs/'].execute()
+proc2.waitFor()
+
 new File('/jobs/').eachFileRecurse(FILES) {
     if(it.name.endsWith('.xml')) {
         def jobName = it.name.replaceAll('.xml','').replaceAll('_',' ')

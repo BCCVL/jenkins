@@ -20,19 +20,24 @@ RUN curl -L https://github.com/docker/compose/releases/download/1.5.2/\
 docker-compose-`uname -s`-`uname -m` > /usr/local/bin/docker-compose; \
     chmod +x /usr/local/bin/docker-compose
 
+RUN mkdir /jobs && chown -R jenkins /jobs
+
 USER jenkins
 COPY plugins.txt /usr/share/jenkins/ref/
 RUN /usr/local/bin/plugins.sh /usr/share/jenkins/ref/plugins.txt
 
 COPY add_user.groovy /usr/share/jenkins/ref/init.groovy.d/add_user.groovy
 
-COPY jobs /jobs
 COPY import_jobs.groovy /usr/share/jenkins/ref/init.groovy.d/import_jobs.groovy
 
 
 ENV JENKINS_USERNAME jenkins
 ENV JENKINS_PASSWORD jenkins
 
+ENV PROJECT_REPO https://github.com/BCCVL/jenkinsprojects.git
+ENV PROJECT_BRANCH master
+
+ENV DOCKER_PUSH 0
 ENV DOCKER_EMAIL nobody@example.com
 ENV DOCKER_USERNAME nobody
 ENV DOCKER_PASSWORD secret
